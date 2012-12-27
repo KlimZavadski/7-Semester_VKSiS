@@ -19,6 +19,9 @@ namespace CheckSum
         String escapeSymbol;
         String flagEscape;
 
+        int dataLengthBit;
+        int controlBitCount;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -27,6 +30,9 @@ namespace CheckSum
             flagSymbol = "~";  // 0x7
             escapeSymbol = "/"; // 0x
             flagEscape = "/0";
+
+            dataLengthBit = dataLength * 8;
+            controlBitCount = 8;
         }
 
         #region [Handlers]
@@ -36,7 +42,6 @@ namespace CheckSum
 
             Thread.Sleep(500);
             String transportString = PackageData(textBox_Input.Text);
-            //String transportString = PackageData("qwertyuiop12345678");
             ShowPackages(transportString);
             Thread.Sleep(500);
             textBox_Output.Text = UnpackageData(transportString);
@@ -52,20 +57,22 @@ namespace CheckSum
         #endregion
 
         #region [Hamming]
-        private String GetHammingCode(String data)
+        private String CodeHamming(String data)
         {
+            StringBuilder buffer = new StringBuilder(new String('0', dataLengthBit - controlBitCount));
+            StringBuilder output = new StringBuilder();
             // Alignmenting output string.
             String empty = new String(' ', dataLength - 1 - data.Length);
             data += empty;
             
             // Generate Hamming code.
-            int code = 0;
-            for (int degree = 0; degree < 8; degree++)
+            String code = "";
+            for (int degree = 0; degree < controlBitCount; degree++)
             {
                 int mask = Convert.ToInt32(Math.Pow(2, degree));
                 int count = 0;
 
-                for (int number = 1; number <= 144; number++)
+                for (int number = 1; number <= dataLengthBit - controlBitCount; number++)
                 {
                     // If number belong this group.
                     if ((number & mask) != 0)
@@ -74,22 +81,122 @@ namespace CheckSum
                         int bitNumber = (number - 1) % 8;
                         
                         // Add bit if it = 1.
-                        count += ((int)data[byteNumber] >> bitNumber) & 1;
+                        int value = ((int)data[byteNumber] >> bitNumber) & 1;
+                        count += value;
+                        // Build output string.
+                        buffer[number - 1] = (char)(value + '0');
                     }
                 }
                 // Get XOR and put value.
-                code += (count % 2) << degree;
+                code += count % 2;
             }
 
-            return empty + ((char)code).ToString();
+            // Insert code bits.
+            for (int i = 0; i < controlBitCount; i++)
+            {
+                buffer.Insert(Convert.ToInt32(Math.Pow(2, i)) - 1, code[i]);
+            }
+
+            // Set mistake.
+            buffer[29] = (buffer[29] == '1') ? '0' : '1';
+
+            // Convert to bytes string.
+            int symbol = 0;
+            for (int i = 0; i < dataLengthBit; i++)
+            {
+                if (buffer[i] == '1')
+                {
+                    symbol += 1 << (i % 8);
+                }
+                if (i % 8 == 7)
+                {
+                    output.Append((char)symbol);
+                    symbol = 0;
+                }
+            }
+            return output.ToString();
         }
 
-        private Int32 IsDataCorrect()
+        private String DecodeHamming(String input)
         {
-            return 0;
+            StringBuilder buffer = new StringBuilder();
+            StringBuilder output = new StringBuilder(dataLength);
+            String code = "";
+            
+            int errorPosition = 0;
+            int alignment = 0;
+
+            // Convert to bit string.
+            foreach (char c in input)
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    if (((c >> i) & 1) != 0)
+                    {
+                        buffer.Append("1");
+                    }
+                    else
+                    {
+                        buffer.Append("0");
+                    }
+                }
+            }
+            // Cut code bits.
+            for (int i = 0; i < controlBitCount; i++)
+            {
+                int position = Convert.ToInt32(Math.Pow(2, i)) - 1 - i;
+                code += buffer[position];
+                buffer.Remove(position, 1);
+            }
+
+            // Generate data string.
+            for (int degree = 0; degree < controlBitCount; degree++)
+            {
+                int mask = Convert.ToInt32(Math.Pow(2, degree));
+                int count = (code[degree] == '1') ? 1 : 0;
+
+                for (int number = 1; number <= dataLengthBit - controlBitCount; number++)
+                {
+                    // If number belong this group.
+                    if ((number & mask) != 0)
+                    {
+                        if (buffer[number - 1] == '1')
+                        {
+                            count += 1;
+                        }
+                    }
+                }
+                // Get XOR and put value.
+                if (count % 2 == 1)
+                {
+                    errorPosition += 1 << degree;
+                    alignment = degree + 1;
+                }
+            }
+
+            // Convert to bytes string.
+            int symbol = 0;
+            for (int i = 0; i < dataLengthBit - controlBitCount; i++)
+            {
+                if (buffer[i] == '1')
+                {
+                    symbol += 1 << (i % 8);
+                }
+                if (i % 8 == 7)
+                {
+                    output.Append((char)symbol);
+                    symbol = 0;
+                }
+            }
+            // Show bad symbol.
+            if (errorPosition != 0)
+            {
+                output[(errorPosition + alignment) / 8] = '?';
+            }
+
+            return output.ToString();
         }
         #endregion
-
 
         #region [Packaging]
         private String GetSubstring(String data, int position, int length)
@@ -125,11 +232,10 @@ namespace CheckSum
                 String data = GetSubstring(input, position, dataLength - 1);
 
                 output += header;
-                output += data;
-                output += GetHammingCode(data);
-                output += (char)(data.Length);
+                output += CodeHamming(data);
+                output += (char)(dataLength);
                 
-                position += data.Length;
+                position += dataLength;
             }
 
             return output;
@@ -142,13 +248,11 @@ namespace CheckSum
             foreach (String package in input.Split(new String[] { flagSymbol }, StringSplitOptions.RemoveEmptyEntries))
             {
                 int len = (int)package[package.Length - 1];
-                int errorPosition = IsDataCorrect(package.Substring(2, dataLength));
-                
-                String data = package.Substring(2, len).Replace(flagEscape, flagSymbol).Replace("//", escapeSymbol);
-                if (errorPosition != -1)
-                {
-                    data = data.Remove(errorPosition, 1).Insert(errorPosition, "?");
-                }
+
+                String data = DecodeHamming(package.Substring(2, len))
+                    .Replace(flagEscape, flagSymbol)
+                    .Replace("//", escapeSymbol)
+                    .Trim();
                 output.Append(data);
             }
             return output.ToString();

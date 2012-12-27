@@ -1,0 +1,41 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<title>Addressing</title>
+
+	<link rel="stylesheet" type="text/css" href="Style.css">
+
+	<script type="text/javascript" src="jquery-1.8.3.min.js"></script>
+	<script type="text/javascript" src="custom.js"></script>
+</head>
+<body class="page">
+	<div id="" class="mainWindow">
+		<div class="addressDiv">
+			<label>Receive address:</label>
+			<br/>
+			<select id="receiveAddressingList">
+				<option value="unicast">Unicast</option>
+				<option value="broadcast">Broadcast</option>
+				<option value="multicast">Multicast</option>
+			</select>
+			<input type="number" id="receiveChannelNumber" class="channelNumberInput"/>
+		</div>
+		<div class="addressDiv">
+			<label>Send address:</label>
+			<br/>
+			<select id="sendAddressingList">
+				<option value="unicast">Unicast</option>
+				<option value="broadcast">Broadcast</option>
+				<option value="multicast">Multicast</option>
+			</select>
+			<input type="number" id="sendChannelNumber" class="channelNumberInput"/>
+		</div>
+
+		<textarea id="sendTextArea"></textarea>
+		<input type="button" id="sendButton" class="button" value="Send"/>
+		<textarea id="receiveTextArea"></textarea>
+	</div>
+	<input type="button" id="clearButton" class="button" value="Clear"/>
+</body>
+</html>

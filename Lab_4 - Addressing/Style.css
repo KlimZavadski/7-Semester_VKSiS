@@ -1,0 +1,45 @@
+body.page {
+	background-color: #ddd;
+}
+
+
+div.mainWindow {
+	width: 600px;
+	height: 300px;
+	padding: 5px;
+	border: 2px solid #999;
+	border-radius: 5px;
+	background-color: #fff;
+}
+div.addressDiv {
+	display: inline-block;
+	width: 49%;
+	margin: 0px;
+}
+
+
+input#sendButton {
+	display: inline;
+	width: 13%;
+	height: 22%;
+	vertical-align: top;
+	margin: 15px 0px;
+}
+input.button {
+	display: inline;
+	width: 100px;
+}
+input.channelNumberInput {
+	width: 50px;
+}
+#sendTextArea {
+	display: inline;
+	width: 85%;
+	height: 20%;
+	margin: 15px 0px;
+}
+#receiveTextArea {
+	display: inline;
+	width: 99%;
+	height: 50%;
+}
